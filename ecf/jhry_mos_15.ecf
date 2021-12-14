@@ -1,0 +1,43 @@
+#PBS -N hry_mos_%CYC%
+#PBS -j oe
+#PBS -S /bin/bash
+#PBS -q %QUEUE%
+#PBS -A %PROJ:OBSPROC%-%PROJENVIR%
+#PBS -l walltime=00:10:00
+#PBS -l place=vscatter,select=1:ncpus=1:mem=1GB
+#PBS -l debug=true
+
+export model=hry_mos
+
+%include <head.h>
+%include <envir-p1.h>
+
+set -x
+############################################################
+# Load modules
+############################################################
+module use /apps/ops/prod/nco/models/modulefiles
+module load mos_shared/$mos_shared_ver
+module load intel/$intel_ver
+module load bufr_dump/$bufr_dump_ver
+module list
+
+export cyc=%CYC%
+
+############################################################
+# CALL executable job script here
+############################################################
+$HOMEhry_mos/jobs/JHRYMOS
+
+if [ $? -ne 0 ]; then
+   ecflow_client --msg="***JOB ${ECF_NAME} ERROR RUNNING J-SCRIPT ***"
+   ecflow_client --abort
+   exit
+fi
+
+%include <tail.h>
+%manual
+
+%end
+
+

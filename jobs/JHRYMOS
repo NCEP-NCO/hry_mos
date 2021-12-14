@@ -1,0 +1,103 @@
+#!/bin/sh 
+# #############################################
+# MDL HRLY PROCESSING
+# #############################################
+date
+set -xa
+export PS4=' $SECONDS + '
+
+####################################
+# obtain unique process id (pid) and make temp directory
+####################################
+export pid=${pid:-$$}
+export DATA=${DATA:-${DATAROOT}/${job}.${pid}}
+
+mkdir -p $DATA
+cd $DATA
+
+export cycle=${cycle:-t${cyc}z}
+export HOUR=${hour:-${cyc}}
+
+####################################
+# Specify NET and RUN Name and model
+####################################
+export NET=${NET:-hry_mos}
+export RUN=${RUN:-hry_mos}
+export model=${model:-hry_mos}
+export pgmout="OUTPUT.$pid"
+
+####################################
+## SENDECF  - Flag Events on ECF
+## SENDCOM  - Copy Files From TMPDIR to $com
+## SENDDBN  - Send files to OSO
+#####################################
+export SENDECF=${SENDECF:-YES}
+export SENDCOM=${SENDCOM:-YES}
+export SENDDBN=${SENDDBN:-YES}
+
+####################################
+# Specify version number
+####################################
+export HRYMOS_MODEL_VERSION=${HRYMOS_MODEL_VERSION:-${hry_mos_ver}}
+
+########################################
+# SET THE HOME VARIABLES           
+########################################
+export HOMEhrymos=${HOMEhrymos:-$PACKAGEROOT/hry_mos.${HRYMOS_MODEL_VERSION}}
+
+####################################
+# Specify Execution Areas
+####################################
+export SCRIPTShrymos=${SCRIPTShrymos:-${HOMEhrymos}/scripts}
+
+##############################
+# Run setpdy and initialize PDY variables
+##############################
+sh setpdy.sh
+. ./PDY
+
+########################################
+# SET THE OUTPUT DIRECTORIES             
+########################################
+export COMOUT=${COMOUT:-$(compath.py -o ${NET}/${hry_mos_ver})/${RUN}.${PDY}}
+mkdir -m 775 -p $COMOUT
+
+env
+
+msg="HAS BEGUN on `hostname`"
+echo "$msg"
+
+env
+
+#############################################################
+# Execute the script
+#############################################################
+$SCRIPTShrymos/exhrymos_obs.sh
+err=$?
+
+if test "$err" -eq '22'
+then
+   msg="NO DATA TO DUMP - ENDING QUIETLY"
+   set +x
+   echo "***************************************"
+   echo "*  $msg"
+   echo "***************************************"
+   set -x
+   echo "$msg"
+else
+   msg="ENDED NORMALLY."
+   echo "$msg"
+fi
+#############################################################
+
+cat $pgmout
+
+########################################
+# CLEAN UP THE WORKING DIRECTORY         
+########################################
+
+if [ "$KEEPDATA" != "YES" ]; then
+   rm -rf $DATA
+fi
+
+date
